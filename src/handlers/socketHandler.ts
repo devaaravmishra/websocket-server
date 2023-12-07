@@ -17,6 +17,7 @@ import {
 	NEW_MESSAGE_CHANNEL,
 	OUTGOING_CALL_KEY,
 	PORT,
+	PROFILE_ACTIVE_STATUS,
 	REJECTED_CALL_KEY,
 } from "../config/config";
 import ConnectedClients from "../utils/ConnectedClients";
@@ -52,6 +53,10 @@ export async function setupSocketHandler(app: FastifyInstance, publisher: Redis,
 			const decrResult = await publisher.decr(CONNECTION_COUNT_KEY);
 
 			publisher.publish(CONNECTION_COUNT_UPDATE_CHANNEL, String(decrResult));
+		});
+
+		io.on("typing", (data) => {
+			io.broadcast.emit("typing", data);
 		});
 	});
 
@@ -172,6 +177,15 @@ export async function setupSocketHandler(app: FastifyInstance, publisher: Redis,
 		console.log(`${count} clients subscribed to channel ${CALL_ENDED_KEY}`);
 	});
 
+	subscriber.subscribe(PROFILE_ACTIVE_STATUS, (err, count) => {
+		if (err) {
+			console.error(`Error subscribing to channel ${PROFILE_ACTIVE_STATUS}`, err);
+			return;
+		}
+
+		console.log(`${count} clients subscribed to channel ${PROFILE_ACTIVE_STATUS}`);
+	});
+
 	subscriber.on("message", (channel, text) => {
 		console.log("channel", channel, "text", text);
 
@@ -235,35 +249,40 @@ export async function setupSocketHandler(app: FastifyInstance, publisher: Redis,
 		}
 
 		if (channel === CALL_IN_PROGRESS_KEY) {
-			const { conversationId, callerId } = JSON.parse(text);
+			const { conversationId, callerId, serverId } = JSON.parse(text);
 
 			const callKey = `ongoing-call-${conversationId}`;
 
 			app.io.emit(callKey, {
 				conversationId,
 				callerId,
+				serverId,
 			});
 
 			return;
 		}
 
 		if (channel === OUTGOING_CALL_KEY) {
-			const { callId, callerId, caller, conversationId, calleeId } = JSON.parse(text);
+			const { call, callId, callerId, caller, conversationId, calleeId, callerMemberId, calleeMemberId, serverId } = JSON.parse(text);
 
 			const outGoingCallKey = `outgoing-call-${calleeId}`;
 
 			app.io.emit(outGoingCallKey, {
+				call,
 				conversationId,
 				callerId,
 				caller,
 				callId,
+				callerMemberId,
+				calleeMemberId,
+				serverId,
 			});
 
 			return;
 		}
 
 		if (channel === MISSED_CALL_KEY) {
-			const { conversationId, calleeId, callId } = JSON.parse(text);
+			const { conversationId, calleeId, callId, serverId } = JSON.parse(text);
 
 			const missedCallKey = `missed-call-${calleeId}`;
 
@@ -271,13 +290,14 @@ export async function setupSocketHandler(app: FastifyInstance, publisher: Redis,
 				conversationId,
 				calleeId,
 				callId,
+				serverId,
 			});
 
 			return;
 		}
 
 		if (channel === MISSED_DIALLED_CALL_KEY) {
-			const { conversationId, callerId, callId } = JSON.parse(text);
+			const { conversationId, callerId, callId, serverId } = JSON.parse(text);
 
 			const missedCallKeyForCaller = `missed-dialled-call-${callerId}`;
 
@@ -285,13 +305,14 @@ export async function setupSocketHandler(app: FastifyInstance, publisher: Redis,
 				conversationId,
 				callId,
 				callerId,
+				serverId,
 			});
 
 			return;
 		}
 
 		if (channel === ACCEPTED_CALL_KEY) {
-			const { conversationId, callerId, callId } = JSON.parse(text);
+			const { conversationId, callerId, callId, serverId, callerMemberId, calleeMemberId } = JSON.parse(text);
 
 			const acceptedCallKey = `accepted-call-${callerId}`;
 
@@ -299,13 +320,16 @@ export async function setupSocketHandler(app: FastifyInstance, publisher: Redis,
 				conversationId,
 				callerId,
 				callId,
+				serverId,
+				callerMemberId,
+				calleeMemberId,
 			});
 
 			return;
 		}
 
 		if (channel === REJECTED_CALL_KEY) {
-			const { conversationId, callerId, callId } = JSON.parse(text);
+			const { conversationId, callerId, callId, serverId } = JSON.parse(text);
 
 			const rejectedCallKey = `rejected-call-${callerId}`;
 
@@ -313,21 +337,35 @@ export async function setupSocketHandler(app: FastifyInstance, publisher: Redis,
 				conversationId,
 				callerId,
 				callId,
+				serverId,
 			});
 
 			return;
 		}
 
 		if (channel === CALL_ENDED_KEY) {
-			const { conversationId, callerId, callId } = JSON.parse(text);
+			const { conversationId, callerId, calleeId, callId, serverId, endedByCaller } = JSON.parse(text);
 
-			const callEndedKey = `ended-call-${callerId}`;
+			const calleeOrCallerId = endedByCaller ? calleeId : callerId;
+			const callEndedKey = `ended-call-${calleeOrCallerId}`;
 
 			app.io.emit(callEndedKey, {
 				conversationId,
 				callerId,
+				calleeId,
 				callId,
+				serverId,
 			});
+
+			return;
+		}
+
+		if (channel === PROFILE_ACTIVE_STATUS) {
+			const updatedProfile = JSON.parse(text);
+
+			const profileActiveStatusKey = `active-status-${updatedProfile.id}`;
+
+			app.io.emit(profileActiveStatusKey, updatedProfile);
 
 			return;
 		}
