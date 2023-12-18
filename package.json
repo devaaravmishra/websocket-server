@@ -2,9 +2,10 @@
 	"name": "websocket-server",
 	"version": "1.0.0",
 	"description": "",
-	"main": "index.js",
+	"main": "app.js",
 	"scripts": {
-		"dev": "tsx watch src/main.ts",
+		"dev": "tsx watch src/app.ts",
+		"start": "node build/app.js",
 		"build": "tsc"
 	},
 	"keywords": [],

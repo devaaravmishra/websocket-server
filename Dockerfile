@@ -19,4 +19,4 @@ COPY package*.json ./
 RUN npm install --only-production
 COPY --from=build /app/build ./
 
-CMD [ "node", "main.js" ]
+CMD [ "node", "app.js" ]
