@@ -26,9 +26,11 @@ This repository contains the code for a WebSocket server built using Fastify and
     npm install
     ```
 
-3. ```bash
+3. **Start the server:**
+
+    ```bash
     npm start
-   ```
+    ```
 
 ## Deployment
 
