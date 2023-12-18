@@ -1,7 +1,7 @@
 {
 	"name": "websocket-server",
 	"version": "1.0.0",
-	"description": "",
+	"description": "A websocket server built with fastify and socket.io",
 	"main": "app.js",
 	"scripts": {
 		"dev": "tsx watch src/app.ts",
