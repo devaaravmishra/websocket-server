@@ -2,12 +2,8 @@
   debug
 }
 
-35.154.254.162 {
+https://ec2-35-154-254-162.ap-south-1.compute.amazonaws.com {
   reverse_proxy chat-app-1:3001 chat-app-2:4000 chat-app-3:5000 {
     header_down Strict-Transport-Security max-age=31536000
-  }
-
-  tls {
-    on_demand
   }
 }
